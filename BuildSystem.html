@@ -1,0 +1,310 @@
+<html>
+<head>
+<title>Simo Build System</title>
+<link rel="stylesheet" href="../doc/simo.css" type="text/css" media="screen">
+</head>
+
+<body>
+
+<p>
+See also README in this same  dir for setup instructions.
+
+<p>
+This page describes a program named build.exe, which doesn't seem to exist.  
+On the other hand, the system still works  this way.  
+Maybe build.rb has something to do with it.  
+
+<h1>Build Overview</h1>
+<div>
+<ul>
+	<li><a href="README.html#about">About build</a></li>
+	<li><a href="README.html#simple">Simple executable project</a></li>
+	<li><a href="README.html#multiple-cc">Support for GCC and MSVC</a></li>
+	<li><a href="README.html#shared">Shared or dynamic link library</a></li>
+	<li><a href="README.html#static">Static Library</a></li>
+	<li><a href="README.html#fdb">Firebird Database Support</a></li>
+	<li><a href="README.html#custom">Custom Rules</a></li>
+<!--	<li>Building setup for win32</li>
+	<li>Building build for linux</li>
+	<li>Integrating with autoconf</li>
+	<li>OBJDIR support</li>
+	<li>Using Python to automate configure</li>
+-->
+</ul>
+</div>
+<div><a name="about"></a>
+<h4>About Build</h4>
+<p>
+	Build is designed to provide a very simple interface to the <acronym title="GNU is Not Unix">GNU</acronym> 
+	make system, while providing
+	support for both the win32 target via both <acronym title="Microsoft Visual C++">MSVC</acronym> 
+	and <acronym title="GNU Compiler Collection">GCC</acronym> and the Linux target via
+	the <acronym title="GNU Compiler Collection">GCC</acronym>. Build files are encoded in xml, which
+	makes it fairly easy to understand and also very extensible. The format aims to make it as simple as
+	possible to add a new target.  Targets are thought of as executables, shared libraries, static libraries,
+	etc...
+</p>
+</div>
+<div><a name="simple"></a>
+<h4>Simple Executable Project</h4>
+<p>
+	A very simple make project can look like the following:
+	<pre>
+&lt;?xml version="1.0"?&gt;
+&lt;make id="tools"&gt;
+	&lt;exe name="helloworld"&gt;
+		&lt;src&gt;helloworld.c&lt;/src&gt;
+	&lt;/exe&gt;
+&lt;/make&gt;
+	</pre>
+	This very simple file will expand into three new files with the aid of <acronym title="GNU is Not Unix">GNU</acronym> autoconf.
+	The files generated are:
+	<ul>
+	<li><b>.make/make.inc</b> defines macros that are shared between multiple makefiles</li>
+	<li><b>.make/make.stub</b> defines rules for making targets defined in make.inc</li>
+	<li><b>Makefile</b> ties all the parts together by include make.inc and make.stub</li>
+	</ul>
+</p>
+</div>
+<div><a name="multiple-cc"></a>
+<h4>Support for GCC and MSVC</h4>
+<p>
+	Makefiles allow you to specify different compiler flags dependent on the compiler you are compiling with.
+	To make this process easier, build provides a cc tag. Providing complier specific flags to the above 
+	example we end up with:<br>
+	<i>This examples shows how to compile a cygwin app using mingw gcc.</i>
+	<pre>
+&lt;?xml version="1.0"?&gt;
+&lt;make id="tools"&gt;
+	&lt;exe name="helloworld" require="gcc"&gt;
+		&lt;src&gt;unix2dos.c&lt;/src&gt;
+		&lt;cc name="gcc"&gt;&lt;cflags&gt;-Wall -O2&lt;/cflags&gt;&lt;/cc&gt;
+		&lt;env name="windows"&gt;
+			&lt;cflags&gt;-DWIN32 -mms-bitfields&lt;/cflags&gt;
+		&lt;/env&gt;
+	
+	&lt;/exe&gt;
+&lt;/make&gt;
+	</pre>
+
+	This example shows how to compile a ibpp program using both gcc and msvc:<br>
+	<pre>
+&lt;exe name="sql_table_view"&gt;
+	&lt;src&gt;
+		sql_table_view.cc
+	&lt;/src&gt;
+
+	&lt;cc name="gcc"&gt;
+		&lt;cflags&gt;-DIBPP_GCC&lt;/cflags&gt;
+		&lt;libs&gt;-lcrypt&lt;/libs&gt;
+	&lt;/cc&gt;
+
+	&lt;cc name="msvc"&gt;
+		&lt;cflags&gt;-DIBPP_MSVC /EHsc&lt;/cflags&gt;
+		&lt;libs&gt;Advapi32.lib&lt;/libs&gt;
+	&lt;/cc&gt;
+
+	&lt;env name="linux"&gt;
+		&lt;cflags&gt;-DIBPP_LINUX&lt;/cflags&gt;
+	&lt;/env&gt;
+
+	&lt;env name="windows"&gt;
+		&lt;cflags&gt;-DIBPP_WINDOWS&lt;/cflags&gt;
+	&lt;/env&gt;
+	&lt;deps&gt;
+		ibpp
+	&lt;/deps&gt;
+	&lt;pkgconfig&gt;
+		libglade-2.0
+	&lt;/pkgconfig&gt;
+&lt;/exe&gt;
+	</pre>
+	The above example also introduces two new concepts, pkg-config and <b>deps</b>.  pkg-config is a package
+	configuration management tool commonly found in linux distributions.  It is also available for msvc
+	and cygwin.  Using the <b>pkgconfig</b> tag, build will automatically generate the correct <b>--cflags</b> and <b>--libs</b>.
+	dpes, is a little more complicated and requires an explination about each make.conf files unique id attribute.
+	Each make.conf file starts with a &lt;make id="make-configuration-id"&gt;  This id is used to uniquely identify
+	a particular configuration.  Because a configuration may contain multiple targets, you may find that the
+	dep rule is not exactly perfect, and this is because as of yet, build has no way of specifying an exact target in a
+	configuration.  This is easy to solve, by having one target for a configuration when you know that target
+	will have dependencies on it from other configurations.  With this in mind, the deps tag allows you to
+	say target x depends on target z from configuration y.
+
+</p>
+</div>
+<div><a name="shared"></a>
+<h4>Shared or Dynamic Link Library</h4>
+<p>
+	Because the world would just not be complete if we couldn't build dynamically loaded libraries or shared
+	libraries, build also has support for such things. The only thing different between building a shared
+	library versus a binary executable (<i>other then the differences in source</i>) 
+	is the use of the lib tag instead of the exec tag.  The following shows how to conditionally build a 
+	library statically or shared.  This case comes up when on one platform a library needs to be dynamic
+	and on another it needs to be static.  IBPP is a library that can be shared in linux but has to be
+	static in win32.
+<pre>
+&lt;?xml version="1.0"?&gt;
+&lt;make id="ibpp"&gt;
+&lt;lib name="ibpp"&gt;
+	&lt;build env="windows" type="static"/&gt;
+	&lt;build env="linux" type="shared"/&gt;
+
+	&lt;src&gt;
+		_dpb.cpp
+		_epb.cpp _ibs.cpp _rb.cpp _spb.cpp _tpb.cpp _xsqlda.cpp
+		array.cpp blob.cpp database.cpp date.cpp datecalc.cpp dbkey.cpp
+		exception.cpp exceptionhelper.cpp ibpp.cpp service.cpp statement.cpp
+		time.cpp transaction.cpp
+	&lt;/src&gt;
+
+	&lt;hdr&gt;
+		_internals.h _msvcwarnings.h ibpp.h
+	&lt;/hdr&gt;
+
+	&lt;cc name="gcc"&gt;
+		&lt;cflags&gt;--rtti -DIBPP_GCC&lt;/cflags&gt;
+		&lt;ldflags&gt;&lt;/ldflags&gt;
+		&lt;libs&gt;{%source%}/libfbstatic.a {%source%}/libfbcommon.a {%source%}/libeditline.a&lt;/libs&gt;
+	&lt;/cc&gt;
+
+	&lt;cc name="msvc"&gt;
+		&lt;cflags&gt;/GR /EHsc -DIBPP_MSVC /I`cygpath -w $(FIREBIRDDIST)/include`&lt;/cflags&gt;
+	&lt;/cc&gt;
+
+	&lt;env name="linux"&gt;
+		&lt;cflags&gt;-DIBPP_LINUX&lt;/cflags&gt;
+	&lt;/env&gt;
+
+	&lt;env name="windows"&gt;
+		&lt;cflags&gt;-DIBPP_WINDOWS&lt;/cflags&gt;
+	&lt;/env&gt;
+
+&lt;/lib&gt;
+&lt;/make&gt;
+</pre>
+
+</p>
+</div>
+<div><a name="static"></a>
+<h4>Static Library</h4>
+<p>
+	Static libraries just like dynamic libraries can be controlled by a single attribute if you
+	do not need to worry about the lirary being static or dynamic depending on the platform.
+	For example the above could have just used to create a static library in win32 and linux:
+	<pre>
+&lt;lib name="ibpp" type="static"&gt;
+	</pre>
+</p>
+</div>
+<div><a name="fdb"></a>
+<h4>Firebird Database Support</h4>
+<p>
+	If you have multiple sql file you use to create a firebird database build can make it much easier
+	manage the sql files, by generating rules to manage the creation of the database.
+
+	For example to build the simo.fdb the following make.conf is used.
+<pre>
+&lt;?xml version="1.0"?&gt;
+&lt;make id="database"&gt;
+	&lt;database name="simo.fdb" user="simo" pass="simo"&gt;
+		&lt;!-- inputs are processed in the order that they are listed, top to bottom --&gt;
+		&lt;inputs&gt;
+			BaseDBDef.sql
+			AllergiesDBDef.sql
+			AppealsDBDef.sql
+			CarrierDBDef.sql
+			ConditionsDBDef.sql
+			ContactInfoDBDef.sql
+			EmployersDBDef.sql
+			EventDBDef.sql
+			HealthPlanDBDef.sql
+			HealthSpendingAccountDBDef.sql
+			HealthTrackingDBDef.sql
+			HSAClaimDBDef.sql
+			HSAStatementDBDef.sql
+			InsuranceCatSubcatDBDef.sql
+			JournalLogDBDef.sql
+			MedicalPurchaseDBDef.sql
+			MedicationsDBDef.sql
+			PersonDBDef.sql
+			PlanBenefitsDBDef.sql
+			PlanYearDeductDBDef.sql
+			PlanYearMaxDBDef.sql
+			PreferencesDBDef.sql
+			PrescriptionDBDef.sql
+			ProviderDBDef.sql
+			RaceDBDef.sql
+			RecordDBDef.sql
+			RecordPlanDBDef.sql
+			RecordProviderDBDef.sql
+			StaticListsDBDef.sql
+			TransportationDBDef.sql
+			VaccinationsDBDef.sql
+			WhosCoveredDBDef.sql
+			ForeignKeyDBDef.sql
+		&lt;/inputs&gt;
+		&lt;stores&gt;
+			store_files/account_types_store
+			store_files/allergic_condition_store
+			store_files/benefit_limitations_store
+			store_files/blood_type_store
+			store_files/conditions_store
+			store_files/gender_store
+			store_files/health_tracking_category_store
+			store_files/hsa_claim_filing_status_store
+			store_files/marital_status_store
+			store_files/medication_store
+			store_files/plan_coverage_type_store
+			store_files/plan_deductible_combos_store
+			store_files/plan_period_type_store
+			store_files/plan_status_store
+			store_files/provider_insur_affiliation_store
+			store_files/race_store
+			store_files/record_status_store
+			store_files/record_types_store
+			store_files/us_states_store
+			store_files/vaccinations_store
+		&lt;/stores&gt;
+	&lt;/database&gt;
+&lt;/make&gt;
+</pre>
+</p>
+</div>
+<div><a name="custom"></a>
+<h4>Custom Rules</h4>
+<p>
+	When the built in rules are not enough you can always add a custom rule to do what ever you need.
+	The following is what simo uses to define a setup rule that executes inno setup compiler to 
+	create an installer via <b>make setup</b>.  Build will simply copy the parts from inc into 
+	the make.inc and from the rule into make.stub, which in turn are included in the Makefile.
+	<pre>
+	&lt;custom&gt;
+		&lt;inc&gt;
+&lt;![CDATA[
+
+]]&gt;
+		&lt;/inc&gt;
+		&lt;rule&gt;
+&lt;![CDATA[
+ifeq ($(CC), cl)
+setup: config/simo.iss.in
+	sed -e "s%\$$DISTDIR%`cygpath.exe -w -m $(OBJDIR)/bin`%g" &lt; config/simo.iss.in &gt; simo.iss
+	chmod a+rw simo.iss
+	tools/unix2dos simo.iss
+	chmod a+rw simo.iss
+	iscc simo.iss
+	chmod a+r Output/setup.exe
+	ls -lh Output/setup.exe
+	mv Output/setup.exe Output/simo-setup-`date +%F%H%M`.exe
+	rm simo.iss
+	du -hs $(OBJDIR)/bin
+endif
+]]&gt;
+	&lt;/rule&gt;
+	&lt;/custom&gt;
+	</pre>
+	Currently, the only weakness of the custom rules are that they must be within an existing target.
+</p>
+</div>
+</body>
+</html>
