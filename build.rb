@@ -27,34 +27,34 @@ module Build
 			@path = Pathname.new( File.dirname(mk_conf) ).realpath
 
 			doc = Document.new(File.new(mk_conf))
-			
-			doc.elements.each( "make" ){|element| 
+
+			doc.elements.each( "make" ){|element|
 				@includes = Build.get_block_items( element, "include" )
 			}
 
 			@custom = []
-			doc.elements.each( "make/custom" ){|element| 
+			doc.elements.each( "make/custom" ){|element|
 				@custom << CustomTarget.new( element )
 			}
 
 			@copy = []
-			doc.elements.each( "make/copy" ){|element| 
+			doc.elements.each( "make/copy" ){|element|
 				@copy << CopyTarget.new( root_path, @path, element, opts )
 			}
-			
+
 			#doc.elements.each( "make/config" ){|element| @configs << Config.new(@path, element, opts) }
 			# collect all library targets
-			doc.elements.each( "make/lib" ){|element| 
+			doc.elements.each( "make/lib" ){|element|
 
 				type = Build.get_attr(element,"type") # target type static|shared if library
 				if( type == "shared" )
-					@sharedlibs << SharedLibraryTarget.new(root_path, @path, element, opts) 
+					@sharedlibs << SharedLibraryTarget.new(root_path, @path, element, opts)
 				elsif( type == "static" )
-					@sharedlibs << StaticLibraryTarget.new(root_path, @path, element, opts) 
+					@sharedlibs << StaticLibraryTarget.new(root_path, @path, element, opts)
 				end
 			}
 			# collect all executable targets
-			doc.elements.each( "make/exe" ){|element| 
+			doc.elements.each( "make/exe" ){|element|
 				@bins << BinTarget.new(root_path, @path, element, opts)
 			}
 		end
@@ -108,7 +108,7 @@ module Build
 	end
 
 	class MakeBundle
-		attr_reader :mkfile, :inc, :rules, :target_dep_rules 
+		attr_reader :mkfile, :inc, :rules, :target_dep_rules
 		attr_writer :target_dep_rules
 
 		def initialize(path)
@@ -193,7 +193,7 @@ module Build
 				$targets[@name] = self
 			end
 
-			el.elements.each('arch'){|element| 
+			el.elements.each('arch'){|element|
 				if( Build.get_attr(element,'type') =~ /#{opts.flags['config']['OS_ARCH']}/ )
 					@src			+= Build.get_block_items(element,"src")
 					@cppflags	+= Build.get_block_items(element,"cppflags")
@@ -243,13 +243,13 @@ module Build
 			out.inc << "#{@name}_CXXFLAGS=#{@cxxflags.join(' ')}\n"
 			out.inc << "#{@name}_LDFLAGS=#{@ldflags.join(' ')}\n"
 			out.inc << "#{@name}_LIBS=#{@libs.join(' ')}\n"
-			write_file_block( out, "OBJS", '.$(OBJ_SUFFIX)' ) 
-			write_file_block( out, "DEPS", '.d' ) 
+			write_file_block( out, "OBJS", '.$(OBJ_SUFFIX)' )
+			write_file_block( out, "DEPS", '.d' )
 			write_clean( out )
 		end
 
 		def write_deps( out )
-			
+
 			# add xpidl file to deps
 			out.inc << "#{@name}_DEPS+="
 			@idlfiles.each{|idl|
@@ -278,7 +278,7 @@ module Build
 							target_dep_rule = "#{path2target}/#{target.target}:\n\t$(MAKE) -C #{path2target}\n"
 							# only include dep target rules once
 							if( !out.target_dep_rules.include?( target_dep_rule ) )
-								out.target_dep_rules << target_dep_rule 
+								out.target_dep_rules << target_dep_rule
 								out.rules << target_dep_rule
 							end
 						end
@@ -349,7 +349,7 @@ module Build
 			end
 		end
 		def write_cxx_rule( out )
-			if( @explicitcc != "" ) 
+			if( @explicitcc != "" )
 				out.rules << "\t#{get_echo} \"(CXX) `basename '$@'` \"; #{@explicitcc} "
 				out.rules << "$(#{@name}_CPPFLAGS) $(#{@name}_CXXFLAGS) -c #{@explicitout}$@ $<\n"
 			else
@@ -358,7 +358,7 @@ module Build
 			end
 		end
 		def write_cc_rule( out )
-			if( @explicitcc != "" ) 
+			if( @explicitcc != "" )
 				out.rules << "\t#{get_echo} \"(CC) `basename '$@'` \"; #{@explicitcc} "
 				out.rules << "$(#{@name}_CPPFLAGS) $(#{@name}_CFLAGS) -c #{@explicitout}$@ $<\n"
 			else
@@ -395,7 +395,7 @@ module Build
 	# or all the cflags from cflags block
 	def self.get_block_items(el,tagName)
 		items = []
-		el.elements.each(tagName){|element| 
+		el.elements.each(tagName){|element|
 			element.texts.each{|text|
 				items += text.to_s.split(' ')
 			}
@@ -407,15 +407,15 @@ module Build
 		def initialize(el)
 
 			@inc = ""
-			el.elements.each("inc"){|e| 
+			el.elements.each("inc"){|e|
 				e.texts.each{|text| @inc += text.to_s }
 			}
 
 			@rule = ""
-			el.elements.each("rule"){|e| 
+			el.elements.each("rule"){|e|
 				e.texts.each{|text| @rule += text.to_s }
 			}
-			
+
 		end
 
 		def write( output )
@@ -600,7 +600,7 @@ module Build
 
 			# write main makefile
 			output.mkfile << "#{@bintarget}:$(#{@name}_DEPS) $(#{@name}_OBJS) "
-			if( @explicitld != "" ) 
+			if( @explicitld != "" )
 				output.mkfile << "\n\t#{@explicitld} #{@explicitldout} $@ $(#{@name}_OBJS) $(#{@name}_LDFLAGS) $(#{@name}_LIBS)\n"
 			elsif( @os == 'win32' )
 				resdeps.each{|res|
@@ -710,7 +710,7 @@ module Build
 
 		makefiles = []
 
-		root_path = Pathname.new(root_path).realpath 
+		root_path = Pathname.new(root_path).realpath
 		puts "Source Root: #{root_path.to_s}"
 		printf "Scanning: "
 		Find.find( root_path ) do |path|
