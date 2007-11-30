@@ -1,7 +1,6 @@
 <html>
 <head>
-<title>Simo Build System</title>
-<link rel="stylesheet" href="../doc/simo.css" type="text/css" media="screen">
+<title>XP Build System</title>
 </head>
 
 <body>
@@ -202,11 +201,11 @@ Maybe build.rb has something to do with it.
 	If you have multiple sql file you use to create a firebird database build can make it much easier
 	manage the sql files, by generating rules to manage the creation of the database.
 
-	For example to build the simo.fdb the following make.conf is used.
+	For example to build the firebird.fdb the following make.conf is used.
 <pre>
 &lt;?xml version="1.0"?&gt;
 &lt;make id="database"&gt;
-	&lt;database name="simo.fdb" user="simo" pass="simo"&gt;
+	&lt;database name="firebird.fdb" user="firebird" pass="firebird"&gt;
 		&lt;!-- inputs are processed in the order that they are listed, top to bottom --&gt;
 		&lt;inputs&gt;
 			BaseDBDef.sql
@@ -274,7 +273,7 @@ Maybe build.rb has something to do with it.
 <h4>Custom Rules</h4>
 <p>
 	When the built in rules are not enough you can always add a custom rule to do what ever you need.
-	The following is what simo uses to define a setup rule that executes inno setup compiler to 
+	The following is what firebird uses to define a setup rule that executes inno setup compiler to 
 	create an installer via <b>make setup</b>.  Build will simply copy the parts from inc into 
 	the make.inc and from the rule into make.stub, which in turn are included in the Makefile.
 	<pre>
@@ -287,16 +286,16 @@ Maybe build.rb has something to do with it.
 		&lt;rule&gt;
 &lt;![CDATA[
 ifeq ($(CC), cl)
-setup: config/simo.iss.in
-	sed -e "s%\$$DISTDIR%`cygpath.exe -w -m $(OBJDIR)/bin`%g" &lt; config/simo.iss.in &gt; simo.iss
-	chmod a+rw simo.iss
-	tools/unix2dos simo.iss
-	chmod a+rw simo.iss
-	iscc simo.iss
+setup: config/firebird.iss.in
+	sed -e "s%\$$DISTDIR%`cygpath.exe -w -m $(OBJDIR)/bin`%g" &lt; config/firebird.iss.in &gt; firebird.iss
+	chmod a+rw firebird.iss
+	tools/unix2dos firebird.iss
+	chmod a+rw firebird.iss
+	iscc firebird.iss
 	chmod a+r Output/setup.exe
 	ls -lh Output/setup.exe
-	mv Output/setup.exe Output/simo-setup-`date +%F%H%M`.exe
-	rm simo.iss
+	mv Output/setup.exe Output/firebird-setup-`date +%F%H%M`.exe
+	rm firebird.iss
 	du -hs $(OBJDIR)/bin
 endif
 ]]&gt;
