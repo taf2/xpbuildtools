@@ -1,0 +1,1 @@
+This is some build scripts I used to maintain some Cross Platform Applications I've written in the past and thought it might be helpful to others wanting to setup a cross platform build environment.  The main feature is it doesn't depend on GNU G++ as the main compiler...  At the time of this writing anyways if you wanted to use MSVC on win32 you had very few options.
